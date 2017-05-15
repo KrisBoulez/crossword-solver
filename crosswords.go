@@ -14,6 +14,7 @@ import (
 const cw_dim = 15       // crosswords is 15 across
 const len_alphabet = 26 // length of the alphabet
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const kbl_debug = false // debugging output yes/no
 
 var cw [cw_dim][cw_dim]string         // crossword 2D array, everything is a string
 var ref_box = make(map[string]string) // reference box, no numbers all strings
@@ -27,9 +28,6 @@ func main() {
 
 	// read the wordlist
 	ReadWordlist("english-words/words.txt")
-
-	//fmt.Println(wordlist)
-	//fmt.Println(wordlist[4])
 
 	PrintCw(words)
 	for i := 1; i <= 15; i++ {
@@ -63,7 +61,7 @@ func TryWordlist(words [][]string) bool {
 		r_unfound += u
 	}
 	r_unfound += "]"
-	//fmt.Println("unfound: ", unfound, r_unfound)
+	KBL_Debug("TryWordList -- unfound: %s, r_unfound: %s\n", unfound, r_unfound)
 
 	for _, word := range incomplete {
 		var hits []string
@@ -80,7 +78,7 @@ func TryWordlist(words [][]string) bool {
 				p_word += "."
 			}
 		}
-		fmt.Println("tlw word - regex: ", word, p_word, regex)
+		KBL_Debug("TryWordList -- word: %s p_word: %s regex:%s\n", word, p_word, regex)
 		if p_word == regex { // this word became complete by another word in this iteration
 			continue
 		}
@@ -100,7 +98,9 @@ func TryWordlist(words [][]string) bool {
 		if num_hits >= max_hits { // too many hits, move on
 			continue
 		}
-		fmt.Println("   match with ", hits)
+		KBL_Debug("TryWordList --   match with: %s\n", hits)
+		// some progress indication for the user
+		fmt.Printf("\t%s\n\t\t%s\n", p_word, hits)
 
 		if num_hits == 1 { // only a single match, update ref_box
 			change = true
@@ -122,7 +122,8 @@ func TryWordlist(words [][]string) bool {
 			}
 			if h_char[last_char] == num_hits { // on this position we have the same char in all hits
 				change = true
-				fmt.Println("  i", i, " t", last_char, " ", h_char[last_char], word[i], ref_box[word[i]])
+				KBL_Debug("TryWordList -- i: %s last_char: %s h_char: %s word: %s ref_box: %s\n",
+					i, last_char, h_char[last_char], word[i], ref_box[word[i]])
 				ref_box[word[i]] = last_char
 			}
 
@@ -174,7 +175,7 @@ func AnalyseCw(words [][]string) ([][]string, [][]string) {
 	for _, word := range words {
 		incomp := true // by default incomplete
 		for _, c := range word {
-			//fmt.Println("c", c, "ref_b", ref_box[c])
+			//KBL_Debug("AnalyseCw -- c: %s, ref_box[c]: %s\n", c, ref_box[c])
 			if c == ref_box[c] {
 				incomp = true // still a number in the word
 				break
@@ -232,7 +233,7 @@ func MakeChoiceRefbox() {
 	choice = strings.TrimSpace(choice)
 	c := strings.Split(choice, " ")
 	for k, v := range c {
-		//fmt.Println("k", k, "v", v)
+		KBL_Debug("MakeChoiceRefbox -- k: %s, v: %s\n", k, v)
 		ref_box[v] = c[k+1] // num, char
 		break
 	}
@@ -334,9 +335,9 @@ func ReadCrossword(filepath string) {
 }
 
 func ReadWordlist(filepath string) {
-	fmt.Print("Reading wordlist ...")
+	KBL_Debug("ReadWordList -- Reading wordlist ...\n")
 	lines := File2Lines(filepath)
-	fmt.Print(" read file ... ")
+	KBL_Debug("ReadWordList -- read file ... \n")
 
 	//re_lt_spaces := regexp.MustCompile(`^\s*(\S.*\S)\s*$`) // trailing and leading spaces
 	//re_mul_spaces := regexp.MustCompile(`\s+`)             // remove multiple spaces by a single
@@ -350,15 +351,15 @@ func ReadWordlist(filepath string) {
 			continue // word  is too long
 		}
 		line = strings.ToUpper(line)
-		//fmt.Println(line)
+		//KBL_Debug("ReadWordList -- line: %s\n",line)
 
 		wordlist[len(line)] = append(wordlist[len(line)], line)
 
 	}
-	fmt.Println("parsed")
+	KBL_Debug("ReadWordList -- parsed wordlist: %s\n", filepath)
 }
 
-func File2Lines(filepath string) []string {
+func File2Lines(filepath string) []string { // opens a file, reads it line by line and returns result in lines[]
 	f, err := os.Open(filepath)
 	if err != nil {
 		panic(err)
@@ -371,5 +372,13 @@ func File2Lines(filepath string) []string {
 		lines = append(lines, scanner.Text())
 	}
 
+	KBL_Debug("File2Lines -- read %s - (%d) lines\n", filepath, len(lines))
+
 	return lines
+}
+
+func KBL_Debug(format string, args ...interface{}) {
+	if kbl_debug {
+		fmt.Printf("[KBL_Debug] "+format, args...)
+	}
 }
